@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Job Market Analyzer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f6f9;
+  margin: 0;
+}
+
+header {
+  background: #4a90e2;
+  color: white;
+  text-align: center;
+  padding: 15px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 10px;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+}
+
+.stat-box {
+  background: #eef3ff;
+  padding: 15px;
+  border-radius: 8px;
+  width: 30%;
+}
+
+canvas {
+  max-width: 100%;
+}
+
+button {
+  background: #4a90e2;
+  color: white;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Job Market Analyzer System</h1>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h3>Upload jobs.csv</h3>
+    <input type="file" id="fileInput">
+    <button onclick="processData()">Analyze</button>
+  </div>
+
+  <!-- ✅ COUNTS DASHBOARD -->
+  <div class="card stats" id="stats"></div>
+
+  <div class="card">
+    <h3>Top Job Roles</h3>
+    <canvas id="barChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Top Locations</h3>
+    <canvas id="pieChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Skills in Demand</h3>
+    <canvas id="skillsChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Salary Trend</h3>
+    <canvas id="salaryChart"></canvas>
+  </div>
+
+</div>
+
+<script>
+let data = [];
+
+function processData() {
+  const file = document.getElementById("fileInput").files[0];
+
+  if (!file) {
+    alert("Upload CSV first!");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const text = e.target.result;
+    parseCSV(text);
+    generateDashboard();
+  };
+
+  reader.readAsText(file);
+}
+
+// CSV parser
+function parseCSV(text) {
+  const rows = text.split("\n").slice(1);
+
+  data = rows.map(row => {
+    const cols = row.split(",");
+    return {
+      job: cols[0],
+      company: cols[1],
+      location: cols[2],
+      salary_min: parseFloat(cols[3]) || 0,
+      salary_max: parseFloat(cols[4]) || 0,
+      tags: cols[5]
+    };
+  });
+}
+
+// Count helper
+function countBy(key) {
+  const map = {};
+  data.forEach(d => {
+    if (!d[key]) return;
+    map[d[key]] = (map[d[key]] || 0) + 1;
+  });
+  return map;
+}
+
+// MAIN DASHBOARD
+function generateDashboard() {
+
+  const jobs = countBy("job");
+  const locations = countBy("location");
+
+  // Skills count
+  const skills = {};
+  data.forEach(d => {
+    if (!d.tags) return;
+    d.tags.split(" ").forEach(tag => {
+      skills[tag] = (skills[tag] || 0) + 1;
+    });
+  });
+
+  // Salary avg
+  const salaries = data.map(d => (d.salary_min + d.salary_max) / 2);
+
+  // ✅ COUNTS SECTION
+  document.getElementById("stats").innerHTML = `
+    <div class="stat-box">
+      <h3>${data.length}</h3>
+      <p>Total Jobs</p>
+    </div>
+    <div class="stat-box">
+      <h3>${Object.keys(jobs)[0]}</h3>
+      <p>Top Role</p>
+    </div>
+    <div class="stat-box">
+      <h3>${Object.keys(locations)[0]}</h3>
+      <p>Top Location</p>
+    </div>
+  `;
+
+  // CHARTS
+
+  new Chart(document.getElementById("barChart"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(jobs).slice(0, 10),
+      datasets: [{ label: "Jobs Count", data: Object.values(jobs).slice(0, 10) }]
+    }
+  });
+
+  new Chart(document.getElementById("pieChart"), {
+    type: "pie",
+    data: {
+      labels: Object.keys(locations).slice(0, 5),
+      datasets: [{ data: Object.values(locations).slice(0, 5) }]
+    }
+  });
+
+  new Chart(document.getElementById("skillsChart"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(skills).slice(0, 10),
+      datasets: [{ label: "Skills Count", data: Object.values(skills).slice(0, 10) }]
+    }
+  });
+
+  new Chart(document.getElementById("salaryChart"), {
+    type: "line",
+    data: {
+      labels: salaries.map((_, i) => i),
+      datasets: [{ label: "Salary Trend", data: salaries }]
+    }
+  });
+
+}
+</script>
+
+</body>
+</html>
